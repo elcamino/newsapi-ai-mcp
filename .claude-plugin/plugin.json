@@ -1,0 +1,10 @@
+{
+  "name": "newsapi-ai",
+  "version": "0.1.0",
+  "description": "newsapi.ai news search for Claude Code: MCP server (articles, events, entity/source lookup) plus a skill that teaches good queries.",
+  "author": { "name": "Tobias von Dewitz" },
+  "homepage": "https://github.com/elcamino/newsapi-ai-mcp",
+  "repository": "https://github.com/elcamino/newsapi-ai-mcp",
+  "license": "MIT",
+  "keywords": ["news", "newsapi.ai", "eventregistry", "mcp"]
+}

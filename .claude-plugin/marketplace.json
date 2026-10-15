@@ -1,0 +1,14 @@
+{
+  "name": "elcamino",
+  "description": "Tobias von Dewitz's Claude Code plugins",
+  "owner": {
+    "name": "Tobias von Dewitz"
+  },
+  "plugins": [
+    {
+      "name": "newsapi-ai",
+      "source": "./",
+      "description": "newsapi.ai news search: MCP server + query skill"
+    }
+  ]
+}

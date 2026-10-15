@@ -2,7 +2,7 @@
 
 MCP server for [newsapi.ai](https://newsapi.ai) (Event Registry): search news articles and events from ~150k sources
 worldwide — from Claude (Code, Desktop, claude.ai), Codex, OpenCode, Cursor or any other MCP client.
-Ships with an [Agent Skill](skill/newsapi-ai/SKILL.md) that teaches agents how to query the API well
+Ships with an [Agent Skill](skills/newsapi-ai/SKILL.md) that teaches agents how to query the API well
 (and how to fall back to plain `curl` where no MCP is available).
 
 ## Tools
@@ -28,6 +28,18 @@ Results are trimmed to compact JSON (snippets instead of full bodies, flattened 
 | `NEWSAPI_AI_MAX_DAYS` | `7` or `31`: hard cap, never query older data (archive queries cost more tokens) |
 | `NEWSAPI_AI_HOST` | API host, default `https://eventregistry.org` |
 | `MCP_AUTH_TOKEN` | HTTP mode only: bearer token clients must send |
+
+## Claude Code: one-step plugin (MCP server + skill)
+
+This repo is also a Claude Code plugin marketplace. The plugin installs the MCP server and the skill together:
+
+```bash
+export NEWSAPI_AI_KEY=your-key          # e.g. in ~/.zshrc – the plugin reads it from the environment
+```
+```
+/plugin install newsapi-ai --marketplace elcamino/newsapi-ai-mcp
+```
+(older Claude Code: `/plugin marketplace add elcamino/newsapi-ai-mcp`, then `/plugin install newsapi-ai@elcamino`)
 
 ## Install — local (stdio)
 
@@ -112,10 +124,11 @@ claude mcp add --transport http newsapi-ai https://news-mcp.example.com/mcp --he
 
 ## The skill
 
-`skill/newsapi-ai/` is a standard `SKILL.md` folder:
+`skills/newsapi-ai/` is a standard `SKILL.md` folder:
 
-- **Claude Code:** copy to `~/.claude/skills/newsapi-ai/` (or `.claude/skills/` in a repo)
+- **Claude Code:** comes with the plugin above; or copy to `~/.claude/skills/newsapi-ai/`
 - **claude.ai / Desktop:** zip the folder and upload it under *Settings → Capabilities → Skills*
+  (claude.ai skills also sync into Claude Code sessions signed in with a claude.ai account)
 - **Codex / OpenCode / others with Agent Skills support:** put it in the client's skills directory;
   otherwise paste it into `AGENTS.md` or the system prompt
 

@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "newsapi-ai": {
+      "command": "npx",
+      "args": ["-y", "github:elcamino/newsapi-ai-mcp"],
+      "env": {
+        "NEWSAPI_AI_KEY": "${NEWSAPI_AI_KEY}"
+      }
+    }
+  }
+}
