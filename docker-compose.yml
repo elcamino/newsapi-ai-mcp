@@ -1,0 +1,10 @@
+services:
+  newsapi-ai-mcp:
+    build: .
+    restart: unless-stopped
+    environment:
+      NEWSAPI_AI_KEY: ${NEWSAPI_AI_KEY}
+      MCP_AUTH_TOKEN: ${MCP_AUTH_TOKEN}
+      # NEWSAPI_AI_MAX_DAYS: "31"
+    # expose only to your reverse proxy network; uncomment for local testing:
+    # ports: ["127.0.0.1:8787:8787"]
