@@ -13,10 +13,11 @@ import { timingSafeEqual } from "node:crypto";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
-import { NewsApiClient } from "./client.js";
+import { NewsApiClient, NewsApiError } from "./client.js";
+import { MISSING_KEY_HELP, resolveConfig } from "./config.js";
 import { registerTools } from "./tools.js";
 
-const VERSION = "0.1.0";
+const VERSION = "0.2.0";
 
 const INSTRUCTIONS = `newsapi.ai gives access to news articles and events from ~150k sources worldwide.
 Workflow: 1) resolve entities/sources/categories to URIs with newsapi_suggest, 2) search with newsapi_search_articles (or newsapi_search_events for clustered stories), 3) fetch full text only for the articles you need with newsapi_get_articles.
@@ -34,9 +35,11 @@ if (has("--help") || has("-h")) {
 Usage: newsapi-ai-mcp [--http] [--port 8787] [--host 127.0.0.1]
 
 Environment:
-  NEWSAPI_AI_KEY               newsapi.ai API key (required; in HTTP mode optional if clients send X-NewsAPI-Key)
+  NEWSAPI_AI_KEY               newsapi.ai API key (in HTTP mode optional if clients send X-NewsAPI-Key)
   NEWSAPI_AI_HOST              API host (default https://eventregistry.org)
   NEWSAPI_AI_MAX_DAYS          7 or 31: never query older data (saves archive tokens)
+  NEWSAPI_AI_CONFIG            config file (default ~/.config/newsapi-ai-mcp/config.json),
+                               JSON: {"apiKey": "...", "maxDays": 31}
   MCP_AUTH_TOKEN               HTTP mode: required bearer token (Authorization: Bearer … or ?token=…)
   MCP_ALLOW_UNAUTHENTICATED=1  HTTP mode: run without MCP_AUTH_TOKEN (only behind your own auth proxy!)
 `);
@@ -47,31 +50,25 @@ if (has("--version")) {
   process.exit(0);
 }
 
-const maxDays = process.env.NEWSAPI_AI_MAX_DAYS ? Number(process.env.NEWSAPI_AI_MAX_DAYS) : undefined;
-if (maxDays !== undefined && maxDays !== 7 && maxDays !== 31) {
-  console.error("NEWSAPI_AI_MAX_DAYS must be 7 or 31");
-  process.exit(1);
+function makeClient(headerKey?: string) {
+  // resolved on every call so a key entered later (plugin settings, config file) is picked up after a restart
+  const cfg = resolveConfig(headerKey);
+  if (!cfg.apiKey) throw new NewsApiError(MISSING_KEY_HELP);
+  return new NewsApiClient({ apiKey: cfg.apiKey, host: cfg.host, maxDataTimeWindow: cfg.maxDays, keySource: cfg.keySource });
 }
 
-function makeClient(apiKey?: string) {
-  return new NewsApiClient({
-    apiKey: apiKey || process.env.NEWSAPI_AI_KEY || process.env.NEWSAPI_KEY || "",
-    host: process.env.NEWSAPI_AI_HOST,
-    maxDataTimeWindow: maxDays,
-  });
-}
-
-function buildServer(apiKey?: string) {
+function buildServer(headerKey?: string) {
   const server = new McpServer({ name: "newsapi-ai", version: VERSION }, { instructions: INSTRUCTIONS });
   // client is created lazily so a missing key surfaces as a tool error, not a crash on startup
-  registerTools(server, () => makeClient(apiKey));
+  registerTools(server, () => makeClient(headerKey));
   return server;
 }
 
 async function runStdio() {
-  if (!process.env.NEWSAPI_AI_KEY && !process.env.NEWSAPI_KEY) {
-    console.error("[newsapi-ai-mcp] warning: NEWSAPI_AI_KEY is not set – tool calls will fail.");
-  }
+  const cfg = resolveConfig();
+  for (const w of cfg.warnings) console.error(`[newsapi-ai-mcp] warning: ${w}`);
+  if (!cfg.apiKey) console.error(`[newsapi-ai-mcp] warning: ${MISSING_KEY_HELP}`);
+  else console.error(`[newsapi-ai-mcp] using API key from ${cfg.keySource}${cfg.maxDays ? `, max ${cfg.maxDays} days` : ""}`);
   const server = buildServer();
   await server.connect(new StdioServerTransport());
 }

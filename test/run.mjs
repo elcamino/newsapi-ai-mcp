@@ -31,7 +31,8 @@ const mock = createServer(async (req, res) => {
   const body = JSON.parse(raw || "{}");
   calls.push({ path: req.url, body });
   const send = (o, s = 200) => res.writeHead(s, { "Content-Type": "application/json" }).end(JSON.stringify(o));
-  if (body.apiKey !== "test-key" && body.apiKey !== "header-key") return send({ error: "Invalid api key test-key-leak" });
+  if (body.apiKey === "revoked-key") return send({ error: "The apiKey that was provided is not recognized" }, 401);
+  if (!["test-key", "header-key", "ui-key", "file-key"].includes(body.apiKey)) return send({ error: "Invalid api key test-key-leak" });
   switch (req.url) {
     case "/api/v1/article/getArticles":
       if (fail429-- > 0) return send({ error: "busy" }, 429);
@@ -194,6 +195,61 @@ const env = { ...process.env, NEWSAPI_AI_KEY: "test-key", NEWSAPI_AI_HOST: apiHo
   assert.ok(!r.content[0].text.includes("test-key-leak"), r.content[0].text);
   console.log("✔ errors redact API key:", r.content[0].text);
   await client.close();
+}
+
+// ---- config resolution: plugin UI value, placeholders, config file, missing key
+{
+  const { mkdtempSync, writeFileSync } = await import("node:fs");
+  const { tmpdir } = await import("node:os");
+  const { join } = await import("node:path");
+  const dir = mkdtempSync(join(tmpdir(), "newsapi-cfg-"));
+  const cfgFile = join(dir, "config.json");
+  writeFileSync(cfgFile, JSON.stringify({ apiKey: "file-key", maxDays: 7 }));
+  const base = { PATH: process.env.PATH, HOME: dir, NEWSAPI_AI_HOST: apiHost, NEWSAPI_AI_CONFIG: join(dir, "none.json") };
+
+  async function run(extraEnv, fn) {
+    const c = new Client({ name: "test", version: "0" });
+    await c.connect(new StdioClientTransport({ command: "node", args: ["dist/index.js"], env: { ...base, ...extraEnv }, stderr: "ignore" }));
+    try { return await fn(c); } finally { await c.close(); }
+  }
+  const usage = (c) => c.callTool({ name: "newsapi_usage", arguments: {} });
+  const search = (c) => c.callTool({ name: "newsapi_search_articles", arguments: { keywords: "x" } });
+
+  // plugin dialog value wins over env; unexpanded placeholders are ignored
+  await run({ NEWSAPI_AI_KEY_UI: "ui-key", NEWSAPI_AI_KEY: "test-key", NEWSAPI_AI_MAX_DAYS_UI: "7" }, async (c) => {
+    await search(c);
+    const b = last("/api/v1/article/getArticles");
+    assert.equal(b.apiKey, "ui-key");
+    assert.equal(b.forceMaxDataTimeWindow, 7);
+  });
+  // Cowork / empty dialog: UI value empty, env is a literal placeholder → falls back to config file (incl. maxDays)
+  await run({ NEWSAPI_AI_KEY_UI: "", NEWSAPI_AI_KEY: "${NEWSAPI_AI_KEY}", NEWSAPI_AI_MAX_DAYS_UI: "${user_config.max_days}", NEWSAPI_AI_CONFIG: cfgFile }, async (c) => {
+    await search(c);
+    const b = last("/api/v1/article/getArticles");
+    assert.equal(b.apiKey, "file-key");
+    assert.equal(b.forceMaxDataTimeWindow, 7);
+  });
+  // max_days "off" in the dialog overrides env/file limits
+  await run({ NEWSAPI_AI_KEY_UI: "ui-key", NEWSAPI_AI_MAX_DAYS_UI: "off", NEWSAPI_AI_MAX_DAYS: "31", NEWSAPI_AI_CONFIG: cfgFile }, async (c) => {
+    await search(c);
+    assert.equal(last("/api/v1/article/getArticles").forceMaxDataTimeWindow, undefined);
+  });
+  // no key anywhere → actionable tool error, server still starts
+  await run({ NEWSAPI_AI_KEY: "${NEWSAPI_AI_KEY}" }, async (c) => {
+    const r = await usage(c);
+    assert.ok(r.isError);
+    assert.match(r.content[0].text, /plugin configure newsapi-ai@elcamino/);
+    assert.match(r.content[0].text, /config file .*apiKey/);
+  });
+  // rejected key → names where it came from, no retry
+  await run({ NEWSAPI_AI_KEY_UI: "revoked-key" }, async (c) => {
+    const n = calls.length;
+    const r = await usage(c);
+    assert.ok(r.isError);
+    assert.match(r.content[0].text, /rejected the API key \(taken from plugin settings\)/);
+    assert.equal(calls.length, n + 1, "401 is not retried");
+  });
+  console.log("✔ config resolution (plugin settings, placeholders, config file, missing/rejected key)");
 }
 
 mock.close();

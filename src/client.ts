@@ -19,6 +19,8 @@ export interface ClientOptions {
   maxRetries?: number;
   /** If set, every request is restricted to the last N days (7 or 31) — avoids archive token costs. */
   maxDataTimeWindow?: number;
+  /** Where the key came from – only used to make auth errors actionable. */
+  keySource?: string;
 }
 
 export class NewsApiClient {
@@ -27,6 +29,7 @@ export class NewsApiClient {
   private readonly timeoutMs: number;
   private readonly maxRetries: number;
   private readonly maxDataTimeWindow?: number;
+  private readonly keySource?: string;
 
   constructor(opts: ClientOptions) {
     if (!opts.apiKey) throw new NewsApiError("No newsapi.ai API key configured (set NEWSAPI_AI_KEY).");
@@ -35,6 +38,7 @@ export class NewsApiClient {
     this.timeoutMs = opts.timeoutMs ?? 60_000;
     this.maxRetries = opts.maxRetries ?? 3;
     this.maxDataTimeWindow = opts.maxDataTimeWindow;
+    this.keySource = opts.keySource;
   }
 
   async request<T = any>(path: string, params: Record<string, unknown> = {}): Promise<T> {
@@ -60,6 +64,12 @@ export class NewsApiClient {
         if (res.status === 429 || res.status >= 500) {
           lastErr = new NewsApiError(`newsapi.ai returned HTTP ${res.status}`, res.status, text.slice(0, 500));
           continue;
+        }
+        if (res.status === 401 || res.status === 403) {
+          throw new NewsApiError(
+            `newsapi.ai rejected the API key${this.keySource ? ` (taken from ${this.keySource})` : ""}: ${redact(text.slice(0, 300), this.apiKey)}`,
+            res.status,
+          );
         }
         if (!res.ok) {
           throw new NewsApiError(`newsapi.ai returned HTTP ${res.status}: ${redact(text.slice(0, 500), this.apiKey)}`, res.status);

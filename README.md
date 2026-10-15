@@ -24,22 +24,45 @@ Results are trimmed to compact JSON (snippets instead of full bodies, flattened 
 
 | Variable | |
 |---|---|
-| `NEWSAPI_AI_KEY` | your newsapi.ai API key (required) |
+| `NEWSAPI_AI_KEY` | your newsapi.ai API key |
 | `NEWSAPI_AI_MAX_DAYS` | `7` or `31`: hard cap, never query older data (archive queries cost more tokens) |
 | `NEWSAPI_AI_HOST` | API host, default `https://eventregistry.org` |
+| `NEWSAPI_AI_CONFIG` | path of the config file, default `~/.config/newsapi-ai-mcp/config.json` |
 | `MCP_AUTH_TOKEN` | HTTP mode only: bearer token clients must send |
+
+Instead of environment variables you can use a config file — handy for GUI apps, which on macOS don't see
+variables from `~/.zshrc`:
+
+```bash
+mkdir -p ~/.config/newsapi-ai-mcp && chmod 700 ~/.config/newsapi-ai-mcp
+echo '{"apiKey": "your-key", "maxDays": 31}' > ~/.config/newsapi-ai-mcp/config.json
+chmod 600 ~/.config/newsapi-ai-mcp/config.json
+```
+
+Key lookup order: plugin settings → `NEWSAPI_AI_KEY` → config file. Empty values and unexpanded `${…}` placeholders are skipped.
 
 ## Claude Code: one-step plugin (MCP server + skill)
 
 This repo is also a Claude Code plugin marketplace. The plugin installs the MCP server and the skill together:
 
-```bash
-export NEWSAPI_AI_KEY=your-key          # e.g. in ~/.zshrc – the plugin reads it from the environment
-```
 ```
 /plugin install newsapi-ai --marketplace elcamino/newsapi-ai-mcp
 ```
 (older Claude Code: `/plugin marketplace add elcamino/newsapi-ai-mcp`, then `/plugin install newsapi-ai@elcamino`)
+
+During installation Claude Code shows a settings dialog:
+
+| Setting | |
+|---|---|
+| **newsapi.ai API key** | stored in the system credential store (macOS Keychain), never in a settings file |
+| **Limit searches to recent news** | `off` / `31` / `7` days |
+
+Change them later with `/plugin configure newsapi-ai@elcamino` (or `/plugin` → Installed → newsapi-ai).
+From a shell: `claude plugin install newsapi-ai@elcamino --config api_key=… --config max_days=31`.
+Restart the session after changing settings.
+
+**Claude Cowork / desktop chat:** these don't show plugin settings dialogs. The plugin still loads there;
+put the key into the config file (see Configuration) instead.
 
 ## Install — local (stdio)
 

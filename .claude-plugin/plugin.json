@@ -1,10 +1,37 @@
 {
   "name": "newsapi-ai",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "newsapi.ai news search for Claude Code: MCP server (articles, events, entity/source lookup) plus a skill that teaches good queries.",
-  "author": { "name": "Tobias von Dewitz" },
+  "author": {
+    "name": "Tobias von Dewitz"
+  },
   "homepage": "https://github.com/elcamino/newsapi-ai-mcp",
   "repository": "https://github.com/elcamino/newsapi-ai-mcp",
   "license": "MIT",
-  "keywords": ["news", "newsapi.ai", "eventregistry", "mcp"]
+  "keywords": [
+    "news",
+    "newsapi.ai",
+    "eventregistry",
+    "mcp"
+  ],
+  "userConfig": {
+    "api_key": {
+      "type": "string",
+      "title": "newsapi.ai API key",
+      "description": "Your API key from https://newsapi.ai/dashboard. Stored in the system's secure credential store. Leave empty to use the NEWSAPI_AI_KEY environment variable or ~/.config/newsapi-ai-mcp/config.json instead.",
+      "sensitive": true,
+      "default": ""
+    },
+    "max_days": {
+      "type": "string",
+      "title": "Limit searches to recent news",
+      "description": "Never query older data than this. 31 or 7 days avoid the more expensive archive searches; 'off' allows the full archive.",
+      "options": [
+        "off",
+        "31",
+        "7"
+      ],
+      "default": "off"
+    }
+  }
 }

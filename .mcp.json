@@ -2,8 +2,13 @@
   "mcpServers": {
     "newsapi-ai": {
       "command": "npx",
-      "args": ["-y", "github:elcamino/newsapi-ai-mcp"],
+      "args": [
+        "-y",
+        "github:elcamino/newsapi-ai-mcp"
+      ],
       "env": {
+        "NEWSAPI_AI_KEY_UI": "${user_config.api_key}",
+        "NEWSAPI_AI_MAX_DAYS_UI": "${user_config.max_days}",
         "NEWSAPI_AI_KEY": "${NEWSAPI_AI_KEY}"
       }
     }

@@ -1,6 +1,6 @@
 {
   "name": "newsapi-ai-mcp",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "MCP server for newsapi.ai (Event Registry): search news articles and events from any MCP client",
   "main": "dist/index.js",
   "scripts": {
