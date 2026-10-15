@@ -31,9 +31,8 @@ Results are trimmed to compact JSON (snippets instead of full bodies, flattened 
 
 ## Install — local (stdio)
 
-Until the package is on npm, replace `npx -y newsapi-ai-mcp` with
-`npx -y github:<owner>/newsapi-ai-mcp` or `node /path/to/newsapi-ai-mcp/dist/index.js`
-(after `npm install` in the checkout).
+Alternatives to `npx -y newsapi-ai-mcp`: `npx -y github:elcamino/newsapi-ai-mcp` (latest main)
+or `node /path/to/newsapi-ai-mcp/dist/index.js` (after `npm install` in a checkout).
 
 **Claude Code**
 ```bash
@@ -126,5 +125,8 @@ claude mcp add --transport http newsapi-ai https://news-mcp.example.com/mcp --he
 npm install
 npm test        # builds, then runs an end-to-end test (stdio + HTTP) against a mock API
 ```
+
+Releases: bump `version` in `package.json` and `src/index.ts`, push a tag `vX.Y.Z` — the GitHub
+workflow tests and publishes to npm (needs the `NPM_TOKEN` repo secret).
 
 MIT License.
